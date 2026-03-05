@@ -1,0 +1,68 @@
+# ── Environment ──────────────────────────────────────────────────
+.env
+*.env
+.env.local
+
+# ── Python ───────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# ── Virtual Environment ──────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── FAISS Index Files ────────────────────────────────────────────
+rag/faiss_index/
+memory/faiss_memory_index/
+
+# ── Memory Data (optional: remove this line if you want to commit memory) ──
+memory/solved_problems.json
+
+# ── Uploaded User Files (temp) ───────────────────────────────────
+uploads/
+temp/
+*.tmp
+
+# ── Audio/Image temp files ───────────────────────────────────────
+*.wav
+*.mp3
+*.m4a
+*.ogg
+*.flac
+*.jpg
+*.jpeg
+*.png
+*.webp
+
+# ── Jupyter / IPython ────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── OS Files ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ──────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Streamlit ────────────────────────────────────────────────────
+.streamlit/secrets.toml
+
+# ── HuggingFace cached models (large, no need to commit) ─────────
+.cache/
+~/.cache/huggingface/
