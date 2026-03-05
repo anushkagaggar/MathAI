@@ -3,6 +3,7 @@ groq
 langgraph
 langchain-core
 langchain-community
+langchain-huggingface
 # ── Embeddings ───────────────────────────────────────────────────
 sentence-transformers
 # ── Vector Store ─────────────────────────────────────────────────
