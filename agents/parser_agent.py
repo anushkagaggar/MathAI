@@ -3,7 +3,8 @@ import json
 from groq import Groq
 from dotenv import load_dotenv
 from agents import MathMentorState
-
+from utils.logger import get_logger
+logger = get_logger(__name__)
 load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))

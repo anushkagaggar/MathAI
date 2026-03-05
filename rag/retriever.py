@@ -1,8 +1,10 @@
 import os
 from dotenv import load_dotenv
 from rag.vector_store import load_vector_store
+from utils.logger import get_logger
 
 load_dotenv()
+logger = get_logger(__name__)
 
 # Singleton for loaded index
 _vector_store = None
@@ -28,6 +30,7 @@ def retrieve(query: str, k: int = None) -> list[dict]:
         Returns empty list if no results or error — never raises.
     """
     if not query or not query.strip():
+        logger.warning("retrieve() called with empty query")
         return []
 
     if k is None:
@@ -40,10 +43,11 @@ def retrieve(query: str, k: int = None) -> list[dict]:
         store = _get_vector_store()
         results = store.similarity_search_with_score(query, k=k)
     except Exception as e:
-        print(f"[RAG] Retrieval error: {e}")
+        logger.error(f"[RAG] Retrieval error: {e}")
         return []
 
     if not results:
+        logger.warning("No RAG results for query: %s", query[:60])
         return []
 
     output = []
@@ -61,6 +65,7 @@ def retrieve(query: str, k: int = None) -> list[dict]:
 
     # Sort by relevance descending
     output.sort(key=lambda x: x["relevance"], reverse=True)
+    logger.debug("Retrieved %d chunks for query: %s", len(output), query[:60])
     return output
 
 
@@ -74,4 +79,6 @@ def retrieve_with_fallback(query: str, k: int = None) -> list[dict]:
 
     # Filter to only reasonably relevant results
     relevant = [r for r in results if r["relevance"] >= 0.1]
+    if not relevant:
+        logger.warning("No relevant RAG context found for query — solver will use LLM-only")
     return relevant

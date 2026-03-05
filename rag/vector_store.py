@@ -5,8 +5,9 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-
+from utils.logger import get_logger
 from rag.embedder import get_embedder
+logger = get_logger(__name__)
 
 load_dotenv()
 
@@ -26,8 +27,8 @@ def _load_knowledge_base_docs() -> list[Document]:
     )
 
     all_docs = []
-    pattern = os.path.join(KNOWLEDGE_BASE_DIR, "*.md")
-    files = glob.glob(pattern) + glob.glob(os.path.join(KNOWLEDGE_BASE_DIR, "*.txt"))
+    files = glob.glob(os.path.join(KNOWLEDGE_BASE_DIR, "*.md")) + \
+            glob.glob(os.path.join(KNOWLEDGE_BASE_DIR, "*.txt"))
 
     if not files:
         raise FileNotFoundError(f"No knowledge base files found in {KNOWLEDGE_BASE_DIR}")
@@ -40,11 +41,11 @@ def _load_knowledge_base_docs() -> list[Document]:
         chunks = splitter.split_text(content)
 
         for i, chunk in enumerate(chunks):
-            doc = Document(
+            all_docs.append(Document(
                 page_content=chunk,
                 metadata={"source": source_name, "chunk_index": i}
-            )
-            all_docs.append(doc)
+            ))
+            logger.debug("Loaded %d chunks from %s", len(chunks), source_name)
 
     return all_docs
 
@@ -54,16 +55,15 @@ def build_vector_store() -> FAISS:
     Builds FAISS index from knowledge base docs, saves to disk.
     Returns the FAISS index object.
     """
-    print("[RAG] Building FAISS vector store from knowledge base...")
+    logger.info("[RAG] Building FAISS vector store from knowledge base...")
     docs = _load_knowledge_base_docs()
-    print(f"[RAG] Loaded {len(docs)} chunks from knowledge base.")
-
+    logger.info("Loaded %d total chunks from knowledge base", len(docs))
     embedder = get_embedder()
     faiss_index = FAISS.from_documents(documents=docs, embedding=embedder)
 
     os.makedirs(FAISS_INDEX_DIR, exist_ok=True)
     faiss_index.save_local(FAISS_INDEX_DIR)
-    print(f"[RAG] FAISS index saved to {FAISS_INDEX_DIR}")
+    logger.info(f"[RAG] FAISS index saved to {FAISS_INDEX_DIR}")
 
     return faiss_index
 
@@ -84,4 +84,5 @@ def load_vector_store() -> FAISS:
         )
         return faiss_index
     else:
+        logger.warning("FAISS index not found — building from scratch")
         return build_vector_store()
