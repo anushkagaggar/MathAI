@@ -1,33 +1,29 @@
 # ── Core LLM & Agent Orchestration ──────────────────────────────
-groq==0.9.0
-langgraph==0.2.28
-langchain-core==0.3.15
-langchain-community==0.3.7
-
+groq
+langgraph
+langchain-core
+langchain-community
 # ── Embeddings ───────────────────────────────────────────────────
-sentence-transformers==3.2.1
-
+sentence-transformers
 # ── Vector Store ─────────────────────────────────────────────────
-faiss-cpu==1.9.0
-
+faiss-cpu
 # ── Math Engine ──────────────────────────────────────────────────
-sympy==1.13.3
+sympy
 
 # ── UI ───────────────────────────────────────────────────────────
-streamlit==1.39.0
+streamlit
 
 # ── Audio Processing ─────────────────────────────────────────────
 # Groq Whisper is used via API — no local audio model needed
 # pydub is used only for audio format conversion before sending to Groq
-pydub==0.25.1
+pydub
 
 # ── Image Processing ─────────────────────────────────────────────
 # Groq Vision (LLaVA) is used via API — no local OCR model needed
-Pillow==10.4.0
+Pillow
 
 # ── Environment & Config ─────────────────────────────────────────
-python-dotenv==1.0.1
-
+python-dotenv
 # ── Data Handling ────────────────────────────────────────────────
-numpy==1.26.4
-pandas==2.2.3
+numpy
+pandas
