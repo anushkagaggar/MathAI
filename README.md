@@ -18,7 +18,7 @@ pinned: false
 *[Link to be added after recording]*
 
 ## 🌐 Live Demo
-[*\[HuggingFace Spaces URL — add after deployment\]*](https://gaggaranushka-mathmentor.hf.space/)
+[*\[HuggingFace Spaces URL\]*](https://gaggaranushka-mathmentor.hf.space/)
 
 ---
 
