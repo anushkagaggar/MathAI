@@ -1,5 +1,6 @@
 import os
 from groq import Groq
+from utils.groq_client import get_groq_client
 from dotenv import load_dotenv
 from utils.logger import get_logger
 from agents import MathMentorState
@@ -8,7 +9,6 @@ load_dotenv()
 
 logger = get_logger(__name__)
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 LLM_MODEL = os.getenv("GROQ_LLM_MODEL", "llama-3.3-70b-versatile")
 
 EXPLAINER_SYSTEM_PROMPT = """You are a friendly, clear JEE mathematics tutor.
@@ -80,7 +80,7 @@ def explainer_node(state: MathMentorState) -> MathMentorState:
     )
 
     try:
-        response = client.chat.completions.create(
+        response = get_groq_client().chat.completions.create(
             model=LLM_MODEL,
             messages=[
                 {"role": "system", "content": EXPLAINER_SYSTEM_PROMPT},
