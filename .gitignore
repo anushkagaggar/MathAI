@@ -33,6 +33,7 @@ memory/solved_problems.json
 uploads/
 temp/
 *.tmp
+logs/
 
 # ── Audio/Image temp files ───────────────────────────────────────
 *.wav
@@ -61,7 +62,7 @@ desktop.ini
 *.swo
 
 # ── Streamlit ────────────────────────────────────────────────────
-.streamlit/secrets.toml
+.streamlit/
 
 # ── HuggingFace cached models (large, no need to commit) ─────────
 .cache/
