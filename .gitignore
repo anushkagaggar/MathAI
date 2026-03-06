@@ -66,5 +66,3 @@ desktop.ini
 # ── HuggingFace cached models (large, no need to commit) ─────────
 .cache/
 ~/.cache/huggingface/
-
-logs/
