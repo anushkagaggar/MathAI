@@ -71,7 +71,7 @@ def process_audio(audio_path: str) -> dict:
     """
     if not os.path.exists(audio_path):
         return {
-            "text": "",
+            "extracted_text": "",
             "confidence": 0.0,
             "input_type": "audio",
             "needs_hitl": True,
@@ -89,7 +89,7 @@ def process_audio(audio_path: str) -> dict:
             ext = ".wav"
         except Exception as e:
             return {
-                "text": "",
+                "extracted_text": "",
                 "confidence": 0.0,
                 "input_type": "audio",
                 "needs_hitl": True,
@@ -115,7 +115,7 @@ def process_audio(audio_path: str) -> dict:
         if converted_path and os.path.exists(converted_path):
             os.remove(converted_path)
         return {
-            "text": "",
+            "extracted_text": "",
             "confidence": 0.0,
             "input_type": "audio",
             "needs_hitl": True,
@@ -142,7 +142,7 @@ def process_audio(audio_path: str) -> dict:
         )
 
     return {
-        "text": transcript,
+        "extracted_text": transcript,
         "confidence": confidence,
         "input_type": "audio",
         "needs_hitl": needs_hitl,
