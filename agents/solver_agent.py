@@ -1,5 +1,6 @@
 import os
 from groq import Groq
+from utils.groq_client import get_groq_client
 from dotenv import load_dotenv
 from utils.logger import get_logger
 from agents import MathMentorState
@@ -8,7 +9,6 @@ load_dotenv()
 
 logger = get_logger(__name__)
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 LLM_MODEL = os.getenv("GROQ_LLM_MODEL", "llama-3.3-70b-versatile")
 
 SYSTEM_PROMPT = """You are an expert JEE mathematics tutor. Solve the given problem step by step.
@@ -128,7 +128,7 @@ def solver_node(state: MathMentorState) -> MathMentorState:
     user_prompt = _build_user_prompt(state)
 
     try:
-        response = client.chat.completions.create(
+        response = get_groq_client().chat.completions.create(
             model=LLM_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},

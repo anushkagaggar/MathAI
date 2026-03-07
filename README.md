@@ -1,3 +1,13 @@
+---
+title: Math Mentor
+emoji: 🧠
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 8501
+pinned: false
+---
+
 # 🧠 Math Mentor
 
 > AI-powered multimodal JEE mathematics solver with 5 LangGraph agents, RAG, HITL, and self-improving memory.
@@ -8,7 +18,7 @@
 *[Link to be added after recording]*
 
 ## 🌐 Live Demo
-*[HuggingFace Spaces URL — add after deployment]*
+[*\[HuggingFace Spaces URL\]*](https://gaggaranushka-mathmentor.hf.space/)
 
 ---
 

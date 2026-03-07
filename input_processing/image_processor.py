@@ -2,6 +2,7 @@ import os
 import base64
 from io import BytesIO
 from groq import Groq
+from utils.groq_client import get_groq_client
 from PIL import Image
 from dotenv import load_dotenv
 
@@ -12,7 +13,6 @@ from utils.logger import get_logger
 load_dotenv()
 
 logger = get_logger(__name__)
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # The ONLY supported Groq vision model as of 2026
 # Override via .env: GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
@@ -88,7 +88,7 @@ def process_image(image_path: str) -> dict:
     # NOTE: per Groq docs, text block goes BEFORE image_url in content array
     try:
         logger.info("Calling Groq Vision — model: %s", VISION_MODEL)
-        response = client.chat.completions.create(
+        response = get_groq_client().chat.completions.create(
             model=VISION_MODEL,
             messages=[
                 {

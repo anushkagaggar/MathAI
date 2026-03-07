@@ -1,6 +1,7 @@
 import os
 import math
 from groq import Groq
+from utils.groq_client import get_groq_client
 from dotenv import load_dotenv
 
 from utils.confidence import estimate_asr_confidence, is_below_threshold
@@ -8,7 +9,6 @@ from utils.formatting import normalize_math_text, clean_whitespace
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 WHISPER_MODEL = os.getenv("GROQ_WHISPER_MODEL", "whisper-large-v3")
 
@@ -100,7 +100,7 @@ def process_audio(audio_path: str) -> dict:
 
     try:
         with open(audio_path, "rb") as audio_file:
-            response = client.audio.transcriptions.create(
+            response = get_groq_client().audio.transcriptions.create(
                 model=WHISPER_MODEL,
                 file=(os.path.basename(audio_path), audio_file, mimetype),
                 language="en",
