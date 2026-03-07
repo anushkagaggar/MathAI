@@ -194,14 +194,26 @@ def _katex_page(body_html: str, bg="rgba(99,102,241,0.07)",
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">{_KATEX_HEAD}
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
+/* Auto dark/light — reads OS/browser preference which matches Streamlit theme */
+@media(prefers-color-scheme:dark){{
+  body{{background:{bg};color:#e8eaf0!important}}
+  .step-hdr{{color:#94a3b8!important}}
+  .lbl{{color:#818cf8!important}}
+  .fin{{background:rgba(22,163,74,.18)!important}}
+  .key{{background:rgba(59,130,246,.18)!important}}
+}}
+@media(prefers-color-scheme:light){{
+  body{{background:{bg};color:#1e1e2e!important}}
+  .step-hdr{{color:#475569!important}}
+}}
 body{{font-family:'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.9;
-     background:{bg};border:{border};border-radius:8px;padding:{pad};
-     color:#1e1e1e;overflow-x:auto;{extra}}}
+     border:{border};border-radius:8px;padding:{pad};
+     overflow-x:auto;{extra}}}
 .katex-display{{overflow-x:auto;overflow-y:hidden}}
 .lbl{{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
-      color:#6366f1;margin-bottom:5px}}
-.step-hdr{{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
-           color:#475569;margin:10px 0 2px}}
+      margin-bottom:5px}}
+.step-hdr{{font-size:11px;font-weight:700;letter-spacing:.4px;
+           text-transform:uppercase;margin:10px 0 2px}}
 .fin{{background:rgba(22,163,74,.12);border-left:3px solid #16A34A;
       border-radius:6px;padding:8px 14px;margin:8px 0;font-weight:600}}
 .key{{background:rgba(37,99,235,.10);border-left:3px solid #3B82F6;
@@ -403,22 +415,33 @@ with left:
 
             if st.session_state.ocr_text:
                 c1, c2 = st.columns([3,1])
-                c1.markdown("**Extracted text:**")
+                c1.markdown("**Extracted math (rendered):**")
                 c2.markdown(_conf_badge(st.session_state.ocr_conf), unsafe_allow_html=True)
 
-                # ── Rendered math preview ──────────────────────────────────
-                _render_math_preview(st.session_state.ocr_text, "🔢 Rendered Math")
+                # ── Rendered math — what the system understood ─────────────
+                _render_math_preview(st.session_state.ocr_text, "🔢 Extracted Math")
 
-                # ── Editable raw text below preview ───────────────────────
-                st.caption("✏️ Edit the LaTeX below if needed:")
-                ocr_edit = st.text_area("Edit LaTeX", value=st.session_state.ocr_text,
-                                        height=80, label_visibility="collapsed",
-                                        key="ocr_edit_box")
+                # ── Plain-English correction (no LaTeX needed) ─────────────
+                st.caption("✏️ Something wrong? Describe the correction in plain English:")
+                ocr_correction = st.text_area(
+                    "Plain English correction",
+                    placeholder="e.g. The upper limit should be tan(x) not tan(2x)\n"
+                                "e.g. The fraction is t dt over 1 plus t squared\n"
+                                "e.g. Looks correct — leave blank",
+                    height=80, label_visibility="collapsed", key="ocr_correction_box"
+                )
 
                 if st.session_state.ocr_confirmed:
                     if st.button("🚀 Solve", type="primary", use_container_width=True):
                         st.session_state.graph_state = None
-                        _run_pipeline(ocr_edit.strip(), "image")
+                        # Combine extracted math + human note for the pipeline
+                        final_text = st.session_state.ocr_text
+                        if ocr_correction.strip():
+                            final_text = (
+                                f"{st.session_state.ocr_text}\n"
+                                f"[Human note: {ocr_correction.strip()}]"
+                            )
+                        _run_pipeline(final_text, "image")
                         st.rerun()
 
     # ── AUDIO ─────────────────────────────────────────────────────────────────
@@ -462,21 +485,31 @@ with left:
 
             if st.session_state.asr_text:
                 c1, c2 = st.columns([3,1])
-                c1.markdown("**Transcript:**")
+                c1.markdown("**Transcript (rendered):**")
                 c2.markdown(_conf_badge(st.session_state.asr_conf), unsafe_allow_html=True)
 
-                # ── Rendered math preview ──────────────────────────────────
-                _render_math_preview(st.session_state.asr_text, "🔢 Rendered Math")
+                # ── Rendered math ──────────────────────────────────────────
+                _render_math_preview(st.session_state.asr_text, "🔢 Transcribed Math")
 
-                # ── Editable raw text ──────────────────────────────────────
-                st.caption("✏️ Edit the LaTeX below if needed:")
-                asr_edit = st.text_area("Edit LaTeX", value=st.session_state.asr_text,
-                                        height=80, label_visibility="collapsed",
-                                        key="asr_edit_box")
+                # ── Plain-English correction ───────────────────────────────
+                st.caption("✏️ Something wrong? Describe the correction in plain English:")
+                asr_correction = st.text_area(
+                    "Plain English correction",
+                    placeholder="e.g. It said x cubed but should be x squared\n"
+                                "e.g. The integral goes from 0 to pi, not 0 to 1\n"
+                                "e.g. Looks correct — leave blank",
+                    height=80, label_visibility="collapsed", key="asr_correction_box"
+                )
                 if st.session_state.asr_confirmed:
                     if st.button("🚀 Solve", type="primary", use_container_width=True):
                         st.session_state.graph_state = None
-                        _run_pipeline(asr_edit.strip(), "audio")
+                        final_text = st.session_state.asr_text
+                        if asr_correction.strip():
+                            final_text = (
+                                f"{st.session_state.asr_text}\n"
+                                f"[Human note: {asr_correction.strip()}]"
+                            )
+                        _run_pipeline(final_text, "audio")
                         st.rerun()
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -490,12 +523,17 @@ with left:
         if ttype in ("ocr","asr"):
             st.warning(f"⚠️ **Review Needed** — {ctx.get('reason','')}")
 
-            # Rendered math preview for HITL
-            _render_math_preview(ctx.get("current_text",""), "🔢 Rendered Math — confirm this is correct")
+            # Rendered math — shown for human to visually confirm
+            _render_math_preview(ctx.get("current_text",""), "🔢 Rendered Math — is this correct?")
 
-            st.caption("✏️ Edit the LaTeX below if needed:")
-            edited = st.text_area("Review / edit:", value=ctx.get("current_text",""),
-                                  height=80, key="hitl_edit_area")
+            st.caption("✏️ Something wrong? Describe the correction in plain English (leave blank if correct):")
+            edited = st.text_area(
+                "Plain English correction",
+                placeholder="e.g. The upper limit should be cot(x) not cos(x)\n"
+                            "e.g. The denominator is t times (1 + t squared)\n"
+                            "e.g. Looks correct — leave blank and click ✅",
+                height=80, key="hitl_edit_area"
+            )
 
             h1, h2, h3 = st.columns(3)
             with h1:
@@ -505,13 +543,16 @@ with left:
                     else:              st.session_state.asr_confirmed = True
                     st.rerun()
             with h2:
-                if st.button("✏️ Use my edit", use_container_width=True):
+                if st.button("✏️ Apply correction", use_container_width=True):
                     st.session_state.awaiting_hitl = False
+                    # edited is now plain English — append as a human note
+                    base = ctx.get("current_text", "")
+                    corrected = f"{base}\n[Human note: {edited.strip()}]" if edited.strip() else base
                     if ttype == "ocr":
-                        st.session_state.ocr_text = edited
+                        st.session_state.ocr_text = corrected
                         st.session_state.ocr_confirmed = True
                     else:
-                        st.session_state.asr_text = edited
+                        st.session_state.asr_text = corrected
                         st.session_state.asr_confirmed = True
                     st.rerun()
             with h3:
