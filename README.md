@@ -15,10 +15,10 @@ pinned: false
 ---
 
 ## 🎥 Demo Video
-*[Link to be added after recording]*
+[*\Link\*](https://drive.google.com/file/d/1LBTt9FEIrzgHWZ2S2j8x7HodclspiOlm/view?usp=sharing)
 
 ## 🌐 Live Demo
-[*\[HuggingFace Spaces URL\]*](https://gaggaranushka-mathmentor.hf.space/)
+[*\HuggingFace Spaces URL\*](https://gaggaranushka-mathmentor.hf.space/)
 
 ---
 
