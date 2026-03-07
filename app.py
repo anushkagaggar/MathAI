@@ -151,9 +151,21 @@ def _reset():
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
+def _strip_display_delimiters(text: str) -> str:
+    """Remove $$ or $ wrappers added for KaTeX display before sending to LLM pipeline."""
+    t = text.strip()
+    if t.startswith("$$") and t.endswith("$$"):
+        return t[2:-2].strip()
+    if t.startswith("$") and t.endswith("$") and t.count("$") == 2:
+        return t[1:-1].strip()
+    return t
+
+
 def _run_pipeline(text: str, input_type: str = "text"):
+    # Strip display-only $$ delimiters before sending to LLM
+    clean_text = _strip_display_delimiters(text)
     with st.spinner("⚙️ Running 5-agent pipeline…"):
-        state = MathMentorState(extracted_text=text, input_type=input_type, agent_trace=[])
+        state = MathMentorState(extracted_text=clean_text, input_type=input_type, agent_trace=[])
         try:
             result = graph.invoke(state)
             st.session_state.graph_state = dict(result)
@@ -230,11 +242,30 @@ renderMathInElement(document.body,{{
 </body></html>"""
 
 
+def _auto_wrap_latex(text: str) -> str:
+    """
+    If text has LaTeX commands (\\int, \\frac, ^, _{ etc) but no $ delimiters,
+    wrap the whole thing in $$ so KaTeX auto-render fires.
+    If text has mixed prose + LaTeX fragments, wrap each LaTeX fragment inline.
+    """
+    import re as _r
+    if not text:
+        return text
+    # Already has delimiters — leave as-is
+    if "$" in text or "\\(" in text or "\\[" in text:
+        return text
+    # Has LaTeX commands — wrap entire thing as display math
+    if _r.search(r'[\\][a-zA-Z]|[\^][{]|[_][{]', text):
+        return f"$${text}$$"
+    return text
+
+
 def _render_math_preview(text: str, label: str = "Rendered Preview", height: int = 90):
-    """Renders math in a KaTeX iframe — scripts execute, $ delimiters render."""
+    """Renders math in a KaTeX iframe — auto-wraps bare LaTeX in $$ delimiters."""
     if not text or not text.strip():
         return
-    safe = _html_lib.escape(text.strip())
+    wrapped = _auto_wrap_latex(text.strip())
+    safe = _html_lib.escape(wrapped)
     body = f'<div class="lbl">{label}</div><div>{safe}</div>'
     components.html(_katex_page(body), height=height + 28, scrolling=False)
 
@@ -243,7 +274,8 @@ def _render_answer_box(final: str):
     """Renders the final answer box with KaTeX math."""
     if not final:
         return
-    safe = _html_lib.escape(final.strip())
+    wrapped = _auto_wrap_latex(final.strip())
+    safe = _html_lib.escape(wrapped)
     body = f'<div class="lbl">🎯 Final Answer</div><div>{safe}</div>'
     h = min(200, 50 + max(1, final.count("\n") + 1) * 36)
     components.html(

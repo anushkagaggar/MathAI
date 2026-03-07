@@ -131,6 +131,16 @@ def process_image(image_path: str) -> dict:
     # Normalize
     extracted_text = normalize_math_text(extracted_raw)
     extracted_text = clean_whitespace(extracted_text)
+
+    # Wrap in $$ if text has LaTeX commands but no delimiters already
+    _latex_cmds = ["\\int", "\\frac", "\\sum", "\\sqrt",
+                   "\\alpha", "\\beta", "\\pi", "\\infty",
+                   "\\cdot", "\\times", "\\leq", "\\geq", "^{", "_{"]
+    _has_cmd = any(cmd in extracted_text for cmd in _latex_cmds)
+    if _has_cmd and "$" not in extracted_text:
+        extracted_text = "$$" + extracted_text + "$$"
+        logger.info("Auto-wrapped extracted LaTeX in $$ delimiters")
+
     logger.info("Extracted text: %r", extracted_text[:120])
 
     # Confidence scoring
