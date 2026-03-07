@@ -1,6 +1,7 @@
 import os
 import json
 from groq import Groq
+from utils.groq_client import get_groq_client
 from dotenv import load_dotenv
 from utils.logger import get_logger
 from agents import MathMentorState
@@ -9,7 +10,6 @@ load_dotenv()
 
 logger = get_logger(__name__)
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 LLM_MODEL = os.getenv("GROQ_LLM_MODEL", "llama-3.3-70b-versatile")
 
 VERIFIER_SYSTEM_PROMPT = """You are a strict mathematical verifier for JEE-level problems.
@@ -131,7 +131,7 @@ def verifier_node(state: MathMentorState) -> MathMentorState:
 
     # ── Call Groq LLM ─────────────────────────────────────────────
     try:
-        response = client.chat.completions.create(
+        response = get_groq_client().chat.completions.create(
             model=LLM_MODEL,
             messages=[
                 {"role": "system", "content": VERIFIER_SYSTEM_PROMPT},

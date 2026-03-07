@@ -1,13 +1,15 @@
 import os
 import json
 from groq import Groq
+from utils.groq_client import get_groq_client
 from dotenv import load_dotenv
 from agents import MathMentorState
 from utils.logger import get_logger
+
 logger = get_logger(__name__)
+
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 LLM_MODEL = os.getenv("GROQ_LLM_MODEL", "llama-3.3-70b-versatile")
 
 SYSTEM_PROMPT = """You are a math problem parser for JEE-level problems.
@@ -55,7 +57,7 @@ def parser_node(state: MathMentorState) -> MathMentorState:
     user_prompt = f"Parse this math problem:\n\n{extracted_text}"
 
     try:
-        response = client.chat.completions.create(
+        response = get_groq_client().chat.completions.create(
             model=LLM_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
