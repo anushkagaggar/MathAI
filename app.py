@@ -122,6 +122,42 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .conf-g { color:#16A34A; font-weight:700; }
 .conf-y { color:#D97706; font-weight:700; }
 .conf-r { color:#DC2626; font-weight:700; }
+
+/* ── Light mode ONLY: fix grey text — dark mode untouched ── */
+@media (prefers-color-scheme: light) {
+  [data-testid="stSidebar"] label,
+  [data-testid="stSidebar"] .stRadio label,
+  [data-testid="stSidebar"] p,
+  [data-testid="stSidebar"] span,
+  [data-testid="stSidebar"] .stSlider label { color: #111827 !important; font-weight: 500 !important; }
+
+  [data-testid="stMetricLabel"] p,
+  [data-testid="stMetricValue"] { color: #111827 !important; font-weight: 600 !important; }
+
+  .stCaption, [data-testid="stCaptionContainer"] p, small, .stCaption p {
+    color: #374151 !important; font-weight: 500 !important;
+  }
+
+  .stTextArea label, .stTextInput label, .stFileUploader label {
+    color: #111827 !important; font-weight: 600 !important;
+  }
+
+  .streamlit-expanderHeader, [data-testid="stExpanderToggleIcon"] + div {
+    color: #111827 !important; font-weight: 600 !important;
+  }
+
+  table td, table th { color: #111827 !important; }
+
+  [data-testid="stAlert"] p { color: #111827 !important; font-weight: 500 !important; }
+
+  .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown li {
+    color: #111827 !important;
+  }
+
+  [data-testid="stDividerText"] { color: #374151 !important; }
+  [data-testid="stSidebar"] hr { border-color: #d1d5db !important; }
+  .stRadio div[role="radiogroup"] label span { color: #111827 !important; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -393,11 +429,8 @@ with left:
     # ── TEXT ──────────────────────────────────────────────────────────────────
     if mode == "Text":
         st.markdown("### ✏️ Enter Problem")
-        st.caption("Use `$...$` for inline math, `$$...$$` for display math")
         txt = st.text_area("Problem", height=140, label_visibility="collapsed",
-            placeholder="e.g. Solve $x^2 - 5x + 6 = 0$\ne.g. Find $\\frac{d}{dx}(x^3 + 2x)$\ne.g. $\\int_0^1 x^2\\,dx$")
-        if txt.strip():
-            _render_math_preview(txt, "Preview")
+            placeholder="e.g. Solve x^2 - 5x + 6 = 0\ne.g. Differentiate x^3 + 2x w.r.t. x\ne.g. P(AUB) where P(A)=0.3, P(B)=0.5")
         if st.button("🚀 Solve", type="primary", use_container_width=True,
                      disabled=not bool(txt.strip())):
             st.session_state.graph_state = None
@@ -785,7 +818,7 @@ with right:
         st.divider()
 
         # ── Step-by-step with KaTeX rendering ─────────────────────────────
-        if exp and exp != final:
+        if exp:
             st.markdown("**Step-by-step Explanation:**")
             _render_explanation(exp, final)
 
