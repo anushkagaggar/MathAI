@@ -10,6 +10,29 @@ logger = get_logger(__name__)
 
 load_dotenv()
 
+import re as _re
+
+def _safe_json_loads(text: str) -> dict:
+    """
+    Robustly parse JSON that may contain LaTeX backslashes.
+    json.loads rejects bare \\int, \\frac etc — this pre-sanitizes them.
+    """
+    s = text.strip()
+    # Strip markdown fences
+    if s.startswith("```"):
+        s = s.split("```")[1]
+        if s.startswith("json"):
+            s = s[4:]
+    s = s.strip()
+    # Extract outermost { ... }
+    b1, b2 = s.find("{"), s.rfind("}")
+    if b1 != -1 and b2 != -1:
+        s = s[b1:b2+1]
+    # Fix lone backslashes that are not valid JSON escape sequences
+    # Valid: \\ \" \/ \b \f \n \r \t \uXXXX
+    s = _re.sub(r'(?<!\\)\\(?!["\\/bfnrtu])', r'\\\\', s)
+    return __import__("json").loads(s)
+
 LLM_MODEL = os.getenv("GROQ_LLM_MODEL", "llama-3.3-70b-versatile")
 
 SYSTEM_PROMPT = """You are a math problem parser for JEE-level problems.
@@ -69,15 +92,24 @@ def parser_node(state: MathMentorState) -> MathMentorState:
 
         raw_content = response.choices[0].message.content or ""
 
-        # Strip any accidental markdown fences
-        clean_content = raw_content.strip()
-        if clean_content.startswith("```"):
-            clean_content = clean_content.split("```")[1]
-            if clean_content.startswith("json"):
-                clean_content = clean_content[4:]
-        clean_content = clean_content.strip()
-
-        parsed = json.loads(clean_content)
+        # Use _safe_json_loads — handles LaTeX backslashes that crash json.loads
+        try:
+            parsed = _safe_json_loads(raw_content)
+        except Exception:
+            # Retry with explicit instruction to escape backslashes
+            retry = get_groq_client().chat.completions.create(
+                model=LLM_MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": (
+                        "Parse this math problem. IMPORTANT: in all JSON string values "
+                        "write every backslash as double-backslash so JSON stays valid. "
+                        "Example: write \\\\int not \\int\n\n" + extracted_text
+                    )}
+                ],
+                max_tokens=600, temperature=0.1
+            )
+            parsed = _safe_json_loads(retry.choices[0].message.content or "{}")
 
         # Validate required fields
         required_fields = ["problem_text", "topic", "variables", "constraints",

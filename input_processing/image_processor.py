@@ -79,10 +79,16 @@ def process_image(image_path: str) -> dict:
         }
 
     extraction_prompt = (
-        "You are a math OCR system. Extract ALL mathematical text from this image exactly as written. "
-        "Preserve all symbols, equations, variables, numbers, and operators. "
-        "If there are multiple problems, extract all of them. "
-        "Return ONLY the extracted math problem text — no explanations, no commentary, nothing else."
+        "You are a math OCR system for JEE-level mathematics. "
+        "Extract ALL mathematical content from this image exactly as it appears. "
+        "CRITICAL rules:\n"
+        "1. If the image shows a FRACTION (one expression over another with a horizontal bar), "
+        "   write it as: (numerator) / (denominator)\n"
+        "2. Preserve ALL symbols: integrals (use \\int), limits, exponents, subscripts, "
+        "   fractions, summations, square roots, Greek letters\n"
+        "3. Use LaTeX notation: \\int_{a}^{b}, \\frac{a}{b}, x^{50}, (1-x^{50})^{100}\n"
+        "4. If there is a fraction bar between two expressions, ALWAYS include the / symbol\n"
+        "5. Return ONLY the extracted math — no explanations, no commentary, nothing else."
     )
 
     # NOTE: per Groq docs, text block goes BEFORE image_url in content array

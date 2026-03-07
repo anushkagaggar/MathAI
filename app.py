@@ -607,6 +607,44 @@ with left:
                     st.session_state.show_correction_input = False
                     st.rerun()
 
+        else:
+            # ── Parser / general HITL — problem needs clarification ────────────
+            gs = st.session_state.graph_state or {}
+            reason = ctx.get("reason", gs.get("hitl_reason", "The problem needs clarification."))
+            st.warning(f"⚠️ **Clarification Needed** — {reason}")
+
+            # Show what was extracted
+            extracted = gs.get("extracted_text", ctx.get("current_text",""))
+            if extracted:
+                _render_math_preview(extracted, "🔢 What was extracted — is this the right problem?")
+
+            st.caption("✏️ Describe in plain English what the problem actually is:")
+            clarification = st.text_area(
+                "Clarification",
+                placeholder=(
+                    "e.g. The expression is a fraction: the numerator is (5050) times integral from 0 to 1 of (1-x^50)^100 dx\n"
+                    "e.g. and the denominator is integral from 0 to 1 of (1-x^50)^101 dx\n"
+                    "e.g. Find the value of this fraction"
+                ),
+                height=110, key="parser_clarification"
+            )
+
+            h1, h2 = st.columns(2)
+            with h1:
+                if st.button("🚀 Solve with clarification", type="primary", use_container_width=True,
+                             disabled=not clarification.strip()):
+                    # Re-run pipeline with original text + human clarification merged
+                    base = extracted or ""
+                    clarified_text = f"{base}\n[Human clarification: {clarification.strip()}]"
+                    st.session_state.awaiting_hitl = False
+                    st.session_state.graph_state = None
+                    _run_pipeline(clarified_text, gs.get("input_type","text"))
+                    st.rerun()
+            with h2:
+                if st.button("❌ Start over", use_container_width=True):
+                    _reset()
+                    st.rerun()
+
     # ─────────────────────────────────────────────────────────────────────────
     # 6. AGENT TRACE + CONTEXT EXPANDERS
     # ─────────────────────────────────────────────────────────────────────────
