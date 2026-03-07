@@ -127,20 +127,21 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .step-line {
     padding: 5px 0;
     border-bottom: 1px solid rgba(148,163,184,0.2);
-    color: inherit;
+    color: #111827;
     line-height: 1.7;
 }
 .final-line {
     background: rgba(22,163,74,0.12);
     border-left: 3px solid #16A34A; border-radius: 6px;
     padding: 8px 14px; margin: 8px 0;
-    font-weight: 700; color: inherit;
+    font-weight: 700; color: #111827;
 }
 .key-line {
     background: rgba(37,99,235,0.10);
     border-left: 3px solid #3B82F6; border-radius: 6px;
     padding: 8px 14px; margin: 8px 0;
-    color: inherit;
+    color: #111827;
+    overflow-x: auto;
 }
 
 /* ── Light mode ONLY: fix grey text — dark mode untouched ── */
@@ -177,6 +178,13 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
   [data-testid="stDividerText"] { color: #374151 !important; }
   [data-testid="stSidebar"] hr { border-color: #d1d5db !important; }
   .stRadio div[role="radiogroup"] label span { color: #111827 !important; }
+}
+
+/* ── Dark mode: restore light text for hardcoded classes ── */
+@media (prefers-color-scheme: dark) {
+  .step-line  { color: #e2e8f0 !important; }
+  .final-line { color: #f0fdf4 !important; }
+  .key-line   { color: #e0f2fe !important; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -258,30 +266,58 @@ _KATEX_HEAD = """
 
 def _katex_page(body_html: str, bg="rgba(99,102,241,0.07)",
                 border="1px solid rgba(99,102,241,0.25)",
-                pad="12px 16px", extra="") -> str:
+                pad="12px 16px", dark_text=False) -> str:
+    """
+    Renders a self-contained KaTeX iframe page.
+    Uses JS to detect Streamlit's actual theme (light/dark) via the parent
+    document — reliable inside Streamlit iframes where CSS prefers-color-scheme
+    media queries do NOT work (iframes always get the OS default, not Streamlit theme).
+    dark_text=True applies high-contrast text colors for answer/step boxes.
+    """
+    theme_js = ""
+    if dark_text:
+        theme_js = """<script>
+(function(){
+  function isLight(){
+    try{
+      // Method 1: check Streamlit's data-theme on parent html element
+      var dt=window.parent.document.documentElement.getAttribute('data-theme');
+      if(dt) return dt==='light';
+      // Method 2: check background brightness of parent stApp
+      var app=window.parent.document.querySelector('[data-testid="stApp"]');
+      if(app){
+        var bg=window.parent.getComputedStyle(app).backgroundColor;
+        var m=bg.match(/rgb\(([\d.]+),\s*([\d.]+),\s*([\d.]+)\)/);
+        if(m){var l=(+m[1]*299+ +m[2]*587+ +m[3]*114)/1000;return l>127;}
+      }
+      // Method 3: check body background
+      var bbg=window.parent.getComputedStyle(window.parent.document.body).backgroundColor;
+      var m2=bbg.match(/rgb\(([\d.]+),\s*([\d.]+),\s*([\d.]+)\)/);
+      if(m2){var l2=(+m2[1]*299+ +m2[2]*587+ +m2[3]*114)/1000;return l2>127;}
+    }catch(e){}
+    return window.matchMedia('(prefers-color-scheme:light)').matches;
+  }
+  var light=isLight();
+  if(light){
+    document.body.style.color='#111827';
+    document.querySelectorAll('.fin').forEach(function(el){el.style.color='#111827';});
+    document.querySelectorAll('.key').forEach(function(el){el.style.color='#111827';});
+    document.querySelectorAll('.lbl').forEach(function(el){el.style.color='#16A34A';});
+  }else{
+    document.body.style.color='#f1f5f9';
+    document.querySelectorAll('.fin').forEach(function(el){el.style.color='#f0fdf4';});
+    document.querySelectorAll('.key').forEach(function(el){el.style.color='#e0f2fe';});
+    document.querySelectorAll('.lbl').forEach(function(el){el.style.color='#818cf8';});
+  }
+})();
+</script>"""
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">{_KATEX_HEAD}
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
-/* Auto dark/light — reads OS/browser preference which matches Streamlit theme */
-@media(prefers-color-scheme:dark){{
-  body{{background:{bg};color:#e8eaf0!important}}
-  .step-hdr{{color:#94a3b8!important}}
-  .lbl{{color:#818cf8!important}}
-  .fin{{background:rgba(22,163,74,.18)!important}}
-  .key{{background:rgba(59,130,246,.18)!important}}
-}}
-@media(prefers-color-scheme:light){{
-  body{{background:{bg};color:#1e1e2e!important}}
-  .step-hdr{{color:#475569!important}}
-}}
-body{{font-family:'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.9;
-     border:{border};border-radius:8px;padding:{pad};
-     overflow-x:auto;{extra}}}
+body{{font-family:'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.85;
+     background:{bg};border:{border};border-radius:8px;padding:{pad};overflow-x:auto}}
 .katex-display{{overflow-x:auto;overflow-y:hidden}}
-.lbl{{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
-      margin-bottom:5px}}
-.step-hdr{{font-size:11px;font-weight:700;letter-spacing:.4px;
-           text-transform:uppercase;margin:10px 0 2px}}
+.lbl{{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:5px}}
 .fin{{background:rgba(22,163,74,.12);border-left:3px solid #16A34A;
       border-radius:6px;padding:8px 14px;margin:8px 0;font-weight:600}}
 .key{{background:rgba(37,99,235,.10);border-left:3px solid #3B82F6;
@@ -295,6 +331,7 @@ renderMathInElement(document.body,{{
   throwOnError:false
 }});
 </script>
+{theme_js}
 </body></html>"""
 
 
@@ -323,7 +360,7 @@ def _render_math_preview(text: str, label: str = "Rendered Preview", height: int
     wrapped = _auto_wrap_latex(text.strip())
     safe = _html_lib.escape(wrapped)
     body = f'<div class="lbl">{label}</div><div>{safe}</div>'
-    components.html(_katex_page(body), height=height + 28, scrolling=True)
+    components.html(_katex_page(body, dark_text=True), height=height + 28, scrolling=True)
 
 
 def _render_answer_box(final: str):
@@ -334,17 +371,11 @@ def _render_answer_box(final: str):
     safe = _html_lib.escape(wrapped)
     body = f'<div class="lbl">🎯 Final Answer</div><div class="ans">{safe}</div>'
     h = min(200, 60 + max(1, final.count("\n") + 1) * 36)
-    # extra CSS forces dark text on light bg and light text on dark bg
-    extra = (
-        "border-left:4px solid #16A34A;"
-        ".ans{font-size:16px;font-weight:600}"
-        "@media(prefers-color-scheme:light){body,div{color:#111827!important}}"
-        "@media(prefers-color-scheme:dark){body,div{color:#f0fdf4!important}}"
-    )
+
     components.html(
         _katex_page(body, bg="rgba(22,163,74,.09)",
                     border="1px solid rgba(22,163,74,.35)",
-                    extra=extra),
+                    dark_text=True),
         height=h + 28, scrolling=False
     )
 
@@ -371,15 +402,10 @@ def _render_explanation(exp: str, final: str):
             f'<div style="padding:5px 0;border-bottom:1px solid rgba(148,163,184,.2);'
             f'{weight}line-height:1.75">{prefix}{safe}</div>'
         )
-        extra = (
-            "@media(prefers-color-scheme:light){body,div{color:#111827!important}}"
-            "@media(prefers-color-scheme:dark){body,div{color:#e8eaf0!important}}"
-        )
-        # Estimate height: ~32px base + ~18px per wrapped line (~80 chars each)
         wrapped_lines = max(1, len(text) // 80 + 1)
         h = 32 + wrapped_lines * 22
         components.html(
-            _katex_page(body, bg="transparent", border="none", pad="5px 0", extra=extra),
+            _katex_page(body, bg="transparent", border="none", pad="5px 0", dark_text=True),
             height=h, scrolling=False
         )
 
@@ -393,13 +419,9 @@ def _render_explanation(exp: str, final: str):
             if _has_math(ln):
                 safe = _html_lib.escape(ln)
                 body = f'<div class="fin">🎯 {safe}</div>'
-                extra = (
-                    "@media(prefers-color-scheme:light){body,.fin{color:#111827!important}}"
-                    "@media(prefers-color-scheme:dark){body,.fin{color:#f0fdf4!important}}"
-                )
                 h = max(60, 32 + (len(ln) // 80 + 1) * 22)
                 components.html(
-                    _katex_page(body, bg="transparent", border="none", pad="0", extra=extra),
+                    _katex_page(body, bg="transparent", border="none", pad="0", dark_text=True),
                     height=h, scrolling=False
                 )
             else:
@@ -409,14 +431,10 @@ def _render_explanation(exp: str, final: str):
             if _has_math(ln):
                 safe = _html_lib.escape(ln)
                 body = f'<div class="key">💡 {safe}</div>'
-                extra = (
-                    "@media(prefers-color-scheme:light){body,.key{color:#111827!important}}"
-                    "@media(prefers-color-scheme:dark){body,.key{color:#e8eaf0!important}}"
-                )
                 h = max(60, 32 + (len(ln) // 80 + 1) * 22)
                 components.html(
-                    _katex_page(body, bg="transparent", border="none", pad="0", extra=extra),
-                    height=h, scrolling=False
+                    _katex_page(body, bg="transparent", border="none", pad="0", dark_text=True),
+                    height=h, scrolling=True
                 )
             else:
                 st.markdown(f'<div class="key-line">💡 {ln}</div>', unsafe_allow_html=True)
