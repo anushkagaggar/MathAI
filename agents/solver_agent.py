@@ -1,5 +1,6 @@
 import os
 from groq import Groq
+from utils.groq_client import get_groq_client
 from dotenv import load_dotenv
 from utils.logger import get_logger
 from agents import MathMentorState
@@ -8,7 +9,6 @@ load_dotenv()
 
 logger = get_logger(__name__)
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 LLM_MODEL = os.getenv("GROQ_LLM_MODEL", "llama-3.3-70b-versatile")
 
 SYSTEM_PROMPT = """You are an expert JEE mathematics tutor. Solve the given problem step by step.
@@ -20,7 +20,11 @@ Rules:
 2. If a SymPy result is provided, your final numerical answer MUST match it exactly.
 3. Only cite sources that appear in Retrieved Context — never invent references.
 4. If you cannot solve it confidently, state explicitly: "I cannot solve this confidently."
-5. Use clear mathematical notation. Prefer plain text math (x^2, sqrt(x), etc.)."""
+5. CRITICAL — Math formatting: ALL mathematical expressions MUST use LaTeX delimiters.
+   - Inline math: $x^2 - 5x + 6 = 0$, $\\frac{d}{dx}$, $\\sqrt{x}$
+   - Display math (own line): $$\\int_{1/e}^{\\tan x} \\frac{t\\,dt}{1+t^2}$$
+   - Use proper LaTeX: \\frac{a}{b}, \\sqrt{x}, \\int_{a}^{b}, \\sum_{i=0}^{n}, \\infty
+   - NEVER write bare math like x^2 or sqrt(x) — always wrap in $ signs."""
 
 
 def _build_user_prompt(state: MathMentorState) -> str:
@@ -128,7 +132,7 @@ def solver_node(state: MathMentorState) -> MathMentorState:
     user_prompt = _build_user_prompt(state)
 
     try:
-        response = client.chat.completions.create(
+        response = get_groq_client().chat.completions.create(
             model=LLM_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},

@@ -1,5 +1,6 @@
 import os
 from groq import Groq
+from utils.groq_client import get_groq_client
 from dotenv import load_dotenv
 from utils.logger import get_logger
 from agents import MathMentorState
@@ -8,7 +9,6 @@ load_dotenv()
 
 logger = get_logger(__name__)
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 LLM_MODEL = os.getenv("GROQ_LLM_MODEL", "llama-3.3-70b-versatile")
 
 EXPLAINER_SYSTEM_PROMPT = """You are a friendly, clear JEE mathematics tutor.
@@ -24,7 +24,15 @@ FINAL ANSWER: [Clearly state the final answer here]
 
 KEY CONCEPT: [One-sentence takeaway that captures the core idea of this problem]
 
-Rules:
+CRITICAL — Math formatting rules:
+- ALL mathematical expressions MUST be wrapped in LaTeX delimiters so they render beautifully.
+- Use $...$ for inline math: e.g. "we get $x = 4$" or "apply $\\frac{d}{dx}$"
+- Use $$...$$ on its own line for display equations: e.g. "$$\\int_0^1 x^2\\,dx = \\frac{1}{3}$$"
+- NEVER write bare math without delimiters. Wrong: "x = 4". Right: "$x = 4$"
+- Use proper LaTeX: \\frac{a}{b}, \\sqrt{x}, \\int_{a}^{b}, \\sum, \\infty, \\alpha, \\beta etc.
+- Plain English words outside delimiters are fine. Only math goes inside $ signs.
+
+Other rules:
 - Use plain English between steps. Avoid jargon without explanation.
 - Every formula you use must be named (e.g., "using the quadratic formula", "by the chain rule")
 - A student who just learned this topic should fully understand each step.
@@ -80,7 +88,7 @@ def explainer_node(state: MathMentorState) -> MathMentorState:
     )
 
     try:
-        response = client.chat.completions.create(
+        response = get_groq_client().chat.completions.create(
             model=LLM_MODEL,
             messages=[
                 {"role": "system", "content": EXPLAINER_SYSTEM_PROMPT},

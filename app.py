@@ -2,6 +2,7 @@
 Math Mentor — Phase 3 Streamlit UI
 Multimodal JEE math solver: Text / Image / Audio
 5 LangGraph agents + HITL + RAG + Memory
+KaTeX math rendering throughout
 """
 import os, sys, time
 import streamlit as st
@@ -9,7 +10,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ── MUST be first Streamlit call ──────────────────────────────────────────
 st.set_page_config(
     page_title="Math Mentor",
     page_icon="🧠",
@@ -29,40 +29,96 @@ from hitl.hitl_manager import get_hitl_context, apply_human_decision
 logger = get_logger(__name__)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CSS
+# CSS + KaTeX
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
+<link rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+  crossorigin="anonymous">
+<script defer
+  src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+  crossorigin="anonymous"></script>
+<script defer
+  src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  crossorigin="anonymous"
+  onload="renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '$',  right: '$',  display: false},
+      {left: '\\\\(', right: '\\\\)', display: false},
+      {left: '\\\\[', right: '\\\\]', display: true}
+    ],
+    throwOnError: false
+  });"></script>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
-
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-.badge {
-    display: inline-block; padding: 2px 10px; border-radius: 999px;
-    font-size: 11px; font-weight: 600; margin-right: 4px; letter-spacing: .3px;
-}
-.bp { background:rgba(59,130,246,0.2); color:#93C5FD; }
-.br { background:rgba(139,92,246,0.2); color:#C4B5FD; }
-.bs { background:rgba(34,197,94,0.2);  color:#86EFAC; }
-.bv { background:rgba(234,179,8,0.2);  color:#FDE047; }
-.be { background:rgba(20,184,166,0.2); color:#5EEAD4; }
+/* Agent badges */
+.badge { display:inline-block; padding:2px 10px; border-radius:999px;
+         font-size:11px; font-weight:600; margin-right:4px; letter-spacing:.3px; }
+.bp { background:rgba(59,130,246,0.2);  color:#93C5FD; }
+.br { background:rgba(139,92,246,0.2);  color:#C4B5FD; }
+.bs { background:rgba(34,197,94,0.2);   color:#86EFAC; }
+.bv { background:rgba(234,179,8,0.2);   color:#FDE047; }
+.be { background:rgba(20,184,166,0.2);  color:#5EEAD4; }
 
+/* Math preview box — shown above raw-text editor */
+.math-preview {
+    background: rgba(99,102,241,0.08);
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 6px;
+    font-size: 16px;
+    line-height: 1.8;
+    color: inherit;
+    overflow-x: auto;
+}
+.math-preview-label {
+    font-size: 11px; font-weight: 600; letter-spacing: .5px;
+    text-transform: uppercase; opacity: 0.55; margin-bottom: 4px;
+}
+
+/* Answer box */
 .answer-box {
     background: rgba(22,163,74,0.12);
     border-left: 4px solid #16A34A; border-radius: 8px;
-    padding: 14px 18px; margin: 10px 0;
-    font-family: 'IBM Plex Mono', monospace; font-size: 15px;
-    color: inherit;
+    padding: 16px 20px; margin: 10px 0;
+    font-size: 16px; line-height: 1.9;
+    color: inherit; overflow-x: auto;
 }
-.step-line { padding: 4px 0; border-bottom: 1px solid rgba(148,163,184,0.2); color: inherit; }
-.final-line {
-    background: rgba(22,163,74,0.15); border-radius:6px; border-left: 3px solid #16A34A;
-    padding:8px 14px; font-weight:700; color: inherit; margin:8px 0;
+.answer-label {
+    font-size: 11px; font-weight:700; letter-spacing:.5px;
+    text-transform:uppercase; color:#16A34A; margin-bottom:6px;
 }
-.key-line {
-    background: rgba(37,99,235,0.12); border-radius:6px; border-left: 3px solid #3B82F6;
-    padding:8px 14px; color: inherit; margin:8px 0;
+
+/* Step lines */
+.step-block {
+    padding: 8px 0 8px 0;
+    border-bottom: 1px solid rgba(148,163,184,0.15);
+    line-height: 1.8; color: inherit; overflow-x: auto;
 }
+.step-header {
+    font-weight: 700; font-size: 13px; letter-spacing: .3px;
+    text-transform: uppercase; opacity: 0.7; margin-bottom: 2px;
+}
+.final-block {
+    background: rgba(22,163,74,0.13);
+    border-left: 3px solid #16A34A; border-radius: 6px;
+    padding: 10px 16px; margin: 10px 0;
+    font-weight: 600; font-size: 16px;
+    line-height: 1.8; color: inherit; overflow-x: auto;
+}
+.key-block {
+    background: rgba(37,99,235,0.10);
+    border-left: 3px solid #3B82F6; border-radius: 6px;
+    padding: 10px 16px; margin: 10px 0;
+    line-height: 1.8; color: inherit; overflow-x: auto;
+}
+
+/* Confidence */
 .conf-g { color:#16A34A; font-weight:700; }
 .conf-y { color:#D97706; font-weight:700; }
 .conf-r { color:#DC2626; font-weight:700; }
@@ -122,22 +178,86 @@ def _agent_badge(agent: str):
     cls = {"Parser":"bp","Intent Router":"br","Solver":"bs","Verifier":"bv","Explainer":"be"}.get(agent,"bp")
     return f'<span class="badge {cls}">{agent}</span>'
 
+def _html_escape(text: str) -> str:
+    """Escape HTML but leave $ delimiters intact for KaTeX."""
+    return text.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+
+def _render_math_preview(text: str, label: str = "Rendered Preview"):
+    """
+    Renders a math preview box above an editable text area.
+    KaTeX auto-render picks up $...$ and $$...$$ delimiters automatically.
+    For text that has no $ delimiters, wraps the whole thing in $$ for display.
+    """
+    if not text or not text.strip():
+        return
+    # If the text contains no LaTeX delimiters at all, try wrapping inline
+    content = text.strip()
+    if "$" not in content and "\\(" not in content and "\\[" not in content:
+        # Plain text — just show as-is, KaTeX won't touch it
+        html_content = _html_escape(content)
+    else:
+        # Has LaTeX — let KaTeX auto-render handle it
+        html_content = _html_escape(content)
+
+    st.markdown(
+        f'<div class="math-preview-label">{label}</div>'
+        f'<div class="math-preview">{html_content}</div>',
+        unsafe_allow_html=True
+    )
+
+def _render_answer_box(final: str):
+    """Renders the final answer in a styled box with KaTeX math."""
+    if not final:
+        return
+    content = _html_escape(final.strip())
+    st.markdown(
+        f'<div class="answer-label">🎯 Final Answer</div>'
+        f'<div class="answer-box">{content}</div>',
+        unsafe_allow_html=True
+    )
+
 def _render_explanation(exp: str, final: str):
+    """
+    Renders step-by-step explanation with KaTeX math in each line.
+    Detects STEP / FINAL ANSWER / KEY CONCEPT prefixes.
+    """
     if not exp:
         return
     lines = exp.split("\n")
+    current_step_header = None
+    current_step_lines = []
+
+    def _flush_step():
+        nonlocal current_step_header, current_step_lines
+        if current_step_lines:
+            body = _html_escape("\n".join(current_step_lines))
+            header_html = f'<div class="step-header">{_html_escape(current_step_header)}</div>' if current_step_header else ""
+            st.markdown(
+                f'<div class="step-block">{header_html}{body}</div>',
+                unsafe_allow_html=True
+            )
+        current_step_header = None
+        current_step_lines = []
+
     for ln in lines:
-        ln = ln.strip()
-        if not ln:
+        ln_stripped = ln.strip()
+        if not ln_stripped:
             continue
-        if ln.startswith("FINAL ANSWER:"):
-            st.markdown(f'<div class="final-line">🎯 {ln}</div>', unsafe_allow_html=True)
-        elif ln.startswith("KEY CONCEPT:"):
-            st.markdown(f'<div class="key-line">💡 {ln}</div>', unsafe_allow_html=True)
-        elif ln.startswith("STEP"):
-            st.markdown(f'<div class="step-line"><b>{ln}</b></div>', unsafe_allow_html=True)
+        if ln_stripped.startswith("FINAL ANSWER:"):
+            _flush_step()
+            content = _html_escape(ln_stripped)
+            st.markdown(f'<div class="final-block">🎯 {content}</div>', unsafe_allow_html=True)
+        elif ln_stripped.startswith("KEY CONCEPT:"):
+            _flush_step()
+            content = _html_escape(ln_stripped)
+            st.markdown(f'<div class="key-block">💡 {content}</div>', unsafe_allow_html=True)
+        elif ln_stripped.startswith("STEP"):
+            _flush_step()
+            current_step_header = ln_stripped
         else:
-            st.markdown(f'<div class="step-line">{ln}</div>', unsafe_allow_html=True)
+            current_step_lines.append(ln_stripped)
+
+    _flush_step()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 2. SIDEBAR
@@ -177,6 +297,9 @@ with st.sidebar:
 
 **HITL triggers:** Low OCR/ASR confidence,
 low verifier score
+
+**Math rendering:** KaTeX — use `$...$` for
+inline and `$$...$$` for display math.
 """)
 
     st.divider()
@@ -208,8 +331,11 @@ with left:
     # ── TEXT ──────────────────────────────────────────────────────────────────
     if mode == "Text":
         st.markdown("### ✏️ Enter Problem")
+        st.caption("Use `$...$` for inline math, `$$...$$` for display math")
         txt = st.text_area("Problem", height=140, label_visibility="collapsed",
-            placeholder="e.g. Solve x² - 5x + 6 = 0\ne.g. Differentiate x³ + 2x w.r.t. x\ne.g. P(A∪B) where P(A)=0.3, P(B)=0.5, independent")
+            placeholder="e.g. Solve $x^2 - 5x + 6 = 0$\ne.g. Find $\\frac{d}{dx}(x^3 + 2x)$\ne.g. $\\int_0^1 x^2\\,dx$")
+        if txt.strip():
+            _render_math_preview(txt, "Preview")
         if st.button("🚀 Solve", type="primary", use_container_width=True,
                      disabled=not bool(txt.strip())):
             st.session_state.graph_state = None
@@ -224,7 +350,6 @@ with left:
         if up_img:
             uploads = os.path.join(_ROOT, "uploads")
             os.makedirs(uploads, exist_ok=True)
-            # Use filename as stable key — NOT timestamp (which changes every rerun)
             img_path = os.path.join(uploads, f"img_{up_img.name}")
             if st.session_state.img_path != img_path:
                 with open(img_path, "wb") as f: f.write(up_img.read())
@@ -243,7 +368,7 @@ with left:
                         st.session_state.ocr_text = r.get("extracted_text","")
                         st.session_state.ocr_conf = r.get("confidence", 1.0)
                         if not st.session_state.ocr_text:
-                            st.error("Could not extract text from image. Please check the image quality.")
+                            st.error("Could not extract text from image.")
                         elif st.session_state.ocr_conf < ocr_t:
                             st.session_state.awaiting_hitl = True
                             st.session_state.hitl_context = {
@@ -262,8 +387,16 @@ with left:
                 c1, c2 = st.columns([3,1])
                 c1.markdown("**Extracted text:**")
                 c2.markdown(_conf_badge(st.session_state.ocr_conf), unsafe_allow_html=True)
-                ocr_edit = st.text_area("Edit", value=st.session_state.ocr_text,
-                                        height=90, label_visibility="collapsed")
+
+                # ── Rendered math preview ──────────────────────────────────
+                _render_math_preview(st.session_state.ocr_text, "🔢 Rendered Math")
+
+                # ── Editable raw text below preview ───────────────────────
+                st.caption("✏️ Edit the LaTeX below if needed:")
+                ocr_edit = st.text_area("Edit LaTeX", value=st.session_state.ocr_text,
+                                        height=80, label_visibility="collapsed",
+                                        key="ocr_edit_box")
+
                 if st.session_state.ocr_confirmed:
                     if st.button("🚀 Solve", type="primary", use_container_width=True):
                         st.session_state.graph_state = None
@@ -278,7 +411,6 @@ with left:
         if up_aud:
             uploads = os.path.join(_ROOT, "uploads")
             os.makedirs(uploads, exist_ok=True)
-            # Use filename as stable key — NOT timestamp (which changes every rerun)
             aud_path = os.path.join(uploads, f"audio_{up_aud.name}")
             if st.session_state.audio_path != aud_path:
                 with open(aud_path, "wb") as f: f.write(up_aud.read())
@@ -314,8 +446,15 @@ with left:
                 c1, c2 = st.columns([3,1])
                 c1.markdown("**Transcript:**")
                 c2.markdown(_conf_badge(st.session_state.asr_conf), unsafe_allow_html=True)
-                asr_edit = st.text_area("Edit", value=st.session_state.asr_text,
-                                        height=90, label_visibility="collapsed")
+
+                # ── Rendered math preview ──────────────────────────────────
+                _render_math_preview(st.session_state.asr_text, "🔢 Rendered Math")
+
+                # ── Editable raw text ──────────────────────────────────────
+                st.caption("✏️ Edit the LaTeX below if needed:")
+                asr_edit = st.text_area("Edit LaTeX", value=st.session_state.asr_text,
+                                        height=80, label_visibility="collapsed",
+                                        key="asr_edit_box")
                 if st.session_state.asr_confirmed:
                     if st.button("🚀 Solve", type="primary", use_container_width=True):
                         st.session_state.graph_state = None
@@ -323,7 +462,7 @@ with left:
                         st.rerun()
 
     # ─────────────────────────────────────────────────────────────────────────
-    # 5. HITL PANEL (inline in left col)
+    # 5. HITL PANEL
     # ─────────────────────────────────────────────────────────────────────────
     if st.session_state.awaiting_hitl and st.session_state.hitl_context:
         ctx = st.session_state.hitl_context
@@ -332,8 +471,14 @@ with left:
 
         if ttype in ("ocr","asr"):
             st.warning(f"⚠️ **Review Needed** — {ctx.get('reason','')}")
-            edited = st.text_area("Review / edit extracted text:", value=ctx.get("current_text",""),
-                                  height=90, key="hitl_edit_area")
+
+            # Rendered math preview for HITL
+            _render_math_preview(ctx.get("current_text",""), "🔢 Rendered Math — confirm this is correct")
+
+            st.caption("✏️ Edit the LaTeX below if needed:")
+            edited = st.text_area("Review / edit:", value=ctx.get("current_text",""),
+                                  height=80, key="hitl_edit_area")
+
             h1, h2, h3 = st.columns(3)
             with h1:
                 if st.button("✅ Looks correct", use_container_width=True, type="primary"):
@@ -364,7 +509,8 @@ with left:
                 f"{gs.get('verifier_notes','')}"
             )
             with st.expander("👁️ View flagged solution"):
-                st.code(gs.get("solver_output",""), language="text")
+                solver_out = gs.get("solver_output","")
+                _render_math_preview(solver_out, "Flagged Solution")
 
             h1, h2, h3 = st.columns(3)
             with h1:
@@ -388,7 +534,9 @@ with left:
                     st.rerun()
 
             if st.session_state.show_correction_input:
-                corr = st.text_area("Provide the correct solution:", height=110, key="corr_text")
+                corr = st.text_area("Provide the correct solution (LaTeX OK):", height=110, key="corr_text")
+                if corr.strip():
+                    _render_math_preview(corr, "Preview your correction")
                 if st.button("✔️ Submit correction", type="primary"):
                     updated = apply_human_decision(dict(gs), "edit", edited_text=corr)
                     with st.spinner("📝 Generating explanation…"):
@@ -410,14 +558,15 @@ with left:
             st.divider()
             with st.expander(f"🔍 Agent Trace ({len(trace)} agents)", expanded=False):
                 for entry in trace:
-                    ag = entry.get("agent","?")
+                    ag  = entry.get("agent","?")
                     act = entry.get("action","")
                     out = entry.get("output","")
                     st.markdown(
                         f'{_agent_badge(ag)} <code style="font-size:11px">{act}</code>',
                         unsafe_allow_html=True
                     )
-                    if out: st.caption(out)
+                    if out:
+                        st.caption(out)
                 route = gs.get("workflow_route","")
                 if route:
                     r_map = {"solve":"🟢 solve","reject":"🔴 reject",
@@ -444,7 +593,7 @@ with left:
 with right:
     gs = st.session_state.graph_state
 
-    # ── Empty state ──────────────────────────────────────────────────────────
+    # ── Empty state ───────────────────────────────────────────────────────────
     if gs is None and not st.session_state.awaiting_hitl:
         st.markdown("### 📋 Solution appears here")
         st.markdown("""
@@ -457,12 +606,12 @@ with right:
 """)
         st.info("Select an input mode on the left and submit a problem.")
 
-    # ── HITL waiting ─────────────────────────────────────────────────────────
+    # ── HITL waiting ──────────────────────────────────────────────────────────
     elif st.session_state.awaiting_hitl and not (gs and gs.get("final_answer")):
         st.markdown("### ⏳ Awaiting Human Review")
         st.info("Respond to the review panel on the left to continue.")
 
-    # ── Rejected / error ─────────────────────────────────────────────────────
+    # ── Rejected / error ──────────────────────────────────────────────────────
     elif gs and gs.get("workflow_route") in ("reject","error","clarify"):
         route = gs.get("workflow_route","")
         st.markdown("### ℹ️ Result")
@@ -474,7 +623,7 @@ with right:
         else:
             st.error(f"Pipeline error: {gs.get('error','Unknown error')}")
 
-    # ── Full solution ─────────────────────────────────────────────────────────
+    # ── Full solution ──────────────────────────────────────────────────────────
     elif gs and (gs.get("final_answer") or gs.get("explanation")):
         score = float(gs.get("verifier_score") or 0)
         final = gs.get("final_answer","")
@@ -490,12 +639,9 @@ with right:
         if gs.get("verifier_notes") and not is_good:
             st.caption(f"Issues: {gs['verifier_notes']}")
 
-        # Final answer box
+        # ── Final answer box with KaTeX rendering ─────────────────────────
         if final:
-            st.markdown(
-                f'<div class="answer-box">🎯 <b>Final Answer</b><br>{final}</div>',
-                unsafe_allow_html=True
-            )
+            _render_answer_box(final)
 
         # SymPy check
         sym = gs.get("sympy_result","")
@@ -509,14 +655,14 @@ with right:
 
         st.divider()
 
-        # Step-by-step
+        # ── Step-by-step with KaTeX rendering ─────────────────────────────
         if exp and exp != final:
             st.markdown("**Step-by-step Explanation:**")
             _render_explanation(exp, final)
 
         st.divider()
 
-        # ── Feedback ────────────────────────────────────────────────────────
+        # ── Feedback ──────────────────────────────────────────────────────
         pid = st.session_state.last_problem_id
         if not st.session_state.feedback_given:
             st.markdown("**Was this helpful?**")
