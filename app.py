@@ -178,88 +178,106 @@ def _agent_badge(agent: str):
     cls = {"Parser":"bp","Intent Router":"br","Solver":"bs","Verifier":"bv","Explainer":"be"}.get(agent,"bp")
     return f'<span class="badge {cls}">{agent}</span>'
 
-def _html_escape(text: str) -> str:
-    """Escape HTML but leave $ delimiters intact for KaTeX."""
-    return text.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+import html as _html_lib
+import streamlit.components.v1 as components
 
-def _render_math_preview(text: str, label: str = "Rendered Preview"):
-    """
-    Renders a math preview box above an editable text area.
-    KaTeX auto-render picks up $...$ and $$...$$ delimiters automatically.
-    For text that has no $ delimiters, wraps the whole thing in $$ for display.
-    """
+# ── KaTeX iframe renderer ─────────────────────────────────────────────────────
+_KATEX_HEAD = """
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+"""
+
+def _katex_page(body_html: str, bg="rgba(99,102,241,0.07)",
+                border="1px solid rgba(99,102,241,0.25)",
+                pad="12px 16px", extra="") -> str:
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">{_KATEX_HEAD}
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{font-family:'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.9;
+     background:{bg};border:{border};border-radius:8px;padding:{pad};
+     color:#1e1e1e;overflow-x:auto;{extra}}}
+.katex-display{{overflow-x:auto;overflow-y:hidden}}
+.lbl{{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+      color:#6366f1;margin-bottom:5px}}
+.step-hdr{{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+           color:#475569;margin:10px 0 2px}}
+.fin{{background:rgba(22,163,74,.12);border-left:3px solid #16A34A;
+      border-radius:6px;padding:8px 14px;margin:8px 0;font-weight:600}}
+.key{{background:rgba(37,99,235,.10);border-left:3px solid #3B82F6;
+      border-radius:6px;padding:8px 14px;margin:8px 0}}
+</style></head><body>
+{body_html}
+<script>
+renderMathInElement(document.body,{{
+  delimiters:[{{left:"$$",right:"$$",display:true}},
+              {{left:"$",right:"$",display:false}}],
+  throwOnError:false
+}});
+</script>
+</body></html>"""
+
+
+def _render_math_preview(text: str, label: str = "Rendered Preview", height: int = 90):
+    """Renders math in a KaTeX iframe — scripts execute, $ delimiters render."""
     if not text or not text.strip():
         return
-    # If the text contains no LaTeX delimiters at all, try wrapping inline
-    content = text.strip()
-    if "$" not in content and "\\(" not in content and "\\[" not in content:
-        # Plain text — just show as-is, KaTeX won't touch it
-        html_content = _html_escape(content)
-    else:
-        # Has LaTeX — let KaTeX auto-render handle it
-        html_content = _html_escape(content)
+    safe = _html_lib.escape(text.strip())
+    body = f'<div class="lbl">{label}</div><div>{safe}</div>'
+    components.html(_katex_page(body), height=height + 28, scrolling=False)
 
-    st.markdown(
-        f'<div class="math-preview-label">{label}</div>'
-        f'<div class="math-preview">{html_content}</div>',
-        unsafe_allow_html=True
-    )
 
 def _render_answer_box(final: str):
-    """Renders the final answer in a styled box with KaTeX math."""
+    """Renders the final answer box with KaTeX math."""
     if not final:
         return
-    content = _html_escape(final.strip())
-    st.markdown(
-        f'<div class="answer-label">🎯 Final Answer</div>'
-        f'<div class="answer-box">{content}</div>',
-        unsafe_allow_html=True
+    safe = _html_lib.escape(final.strip())
+    body = f'<div class="lbl">🎯 Final Answer</div><div>{safe}</div>'
+    h = min(200, 50 + max(1, final.count("\n") + 1) * 36)
+    components.html(
+        _katex_page(body, bg="rgba(22,163,74,.09)",
+                    border="1px solid rgba(22,163,74,.35)",
+                    extra="border-left:4px solid #16A34A"),
+        height=h + 28, scrolling=False
     )
 
+
 def _render_explanation(exp: str, final: str):
-    """
-    Renders step-by-step explanation with KaTeX math in each line.
-    Detects STEP / FINAL ANSWER / KEY CONCEPT prefixes.
-    """
+    """Renders full step-by-step explanation with KaTeX in one iframe."""
     if not exp:
         return
     lines = exp.split("\n")
-    current_step_header = None
-    current_step_lines = []
+    blocks = []
+    cur_hdr, cur_body = None, []
 
-    def _flush_step():
-        nonlocal current_step_header, current_step_lines
-        if current_step_lines:
-            body = _html_escape("\n".join(current_step_lines))
-            header_html = f'<div class="step-header">{_html_escape(current_step_header)}</div>' if current_step_header else ""
-            st.markdown(
-                f'<div class="step-block">{header_html}{body}</div>',
-                unsafe_allow_html=True
-            )
-        current_step_header = None
-        current_step_lines = []
+    def flush():
+        nonlocal cur_hdr, cur_body
+        if cur_body:
+            hdr = f'<div class="step-hdr">{_html_lib.escape(cur_hdr)}</div>' if cur_hdr else ""
+            blocks.append(f'<div style="padding:4px 0;border-bottom:1px solid rgba(148,163,184,.15)">{hdr}{_html_lib.escape(" ".join(cur_body))}</div>')
+        cur_hdr, cur_body = None, []
 
     for ln in lines:
-        ln_stripped = ln.strip()
-        if not ln_stripped:
-            continue
-        if ln_stripped.startswith("FINAL ANSWER:"):
-            _flush_step()
-            content = _html_escape(ln_stripped)
-            st.markdown(f'<div class="final-block">🎯 {content}</div>', unsafe_allow_html=True)
-        elif ln_stripped.startswith("KEY CONCEPT:"):
-            _flush_step()
-            content = _html_escape(ln_stripped)
-            st.markdown(f'<div class="key-block">💡 {content}</div>', unsafe_allow_html=True)
-        elif ln_stripped.startswith("STEP"):
-            _flush_step()
-            current_step_header = ln_stripped
+        s = ln.strip()
+        if not s: continue
+        if s.startswith("FINAL ANSWER:"):
+            flush(); blocks.append(f'<div class="fin">🎯 {_html_lib.escape(s)}</div>')
+        elif s.startswith("KEY CONCEPT:"):
+            flush(); blocks.append(f'<div class="key">💡 {_html_lib.escape(s)}</div>')
+        elif s.startswith("STEP"):
+            flush(); cur_hdr = s
         else:
-            current_step_lines.append(ln_stripped)
+            cur_body.append(s)
+    flush()
 
-    _flush_step()
+    body = "\n".join(blocks)
+    h = min(1400, max(180, len([l for l in lines if l.strip()]) * 40))
+    components.html(
+        _katex_page(body, bg="transparent", border="none", pad="0"),
+        height=h + 20, scrolling=True
+    )
 
-# ─────────────────────────────────────────────────────────────────────────────
+
 # 2. SIDEBAR
 # ─────────────────────────────────────────────────────────────────────────────
 with st.sidebar:
