@@ -24,7 +24,7 @@ ENV/
 
 # ── FAISS Index Files ────────────────────────────────────────────
 rag/faiss_index/
-memory/faiss_memory_index/
+memory/memory_faiss_index/
 
 # ── Memory Data (optional: remove this line if you want to commit memory) ──
 memory/solved_problems.json
