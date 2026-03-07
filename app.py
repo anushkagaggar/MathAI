@@ -323,7 +323,7 @@ def _render_math_preview(text: str, label: str = "Rendered Preview", height: int
     wrapped = _auto_wrap_latex(text.strip())
     safe = _html_lib.escape(wrapped)
     body = f'<div class="lbl">{label}</div><div>{safe}</div>'
-    components.html(_katex_page(body), height=height + 28, scrolling=False)
+    components.html(_katex_page(body), height=height + 28, scrolling=True)
 
 
 def _render_answer_box(final: str):
@@ -635,9 +635,16 @@ with left:
                 f"(score: {gs.get('verifier_score',0):.0%})\n\n"
                 f"{gs.get('verifier_notes','')}"
             )
-            with st.expander("👁️ View flagged solution"):
+            with st.expander("👁️ View flagged solution", expanded=True):
                 solver_out = gs.get("solver_output","")
-                _render_math_preview(solver_out, "Flagged Solution")
+                st.markdown(
+                    f'<div style="max-height:300px;overflow-y:auto;overflow-x:auto;'
+                    f'background:rgba(0,0,0,0.04);border:1px solid rgba(148,163,184,0.3);'
+                    f'border-radius:8px;padding:12px 16px;font-family:monospace;'
+                    f'font-size:13px;line-height:1.7;white-space:pre-wrap;color:inherit">'
+                    f'{solver_out}</div>',
+                    unsafe_allow_html=True
+                )
 
             h1, h2, h3 = st.columns(3)
             with h1:
