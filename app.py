@@ -123,6 +123,26 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .conf-y { color:#D97706; font-weight:700; }
 .conf-r { color:#DC2626; font-weight:700; }
 
+/* Step-by-step explanation lines */
+.step-line {
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(148,163,184,0.2);
+    color: inherit;
+    line-height: 1.7;
+}
+.final-line {
+    background: rgba(22,163,74,0.12);
+    border-left: 3px solid #16A34A; border-radius: 6px;
+    padding: 8px 14px; margin: 8px 0;
+    font-weight: 700; color: inherit;
+}
+.key-line {
+    background: rgba(37,99,235,0.10);
+    border-left: 3px solid #3B82F6; border-radius: 6px;
+    padding: 8px 14px; margin: 8px 0;
+    color: inherit;
+}
+
 /* ── Light mode ONLY: fix grey text — dark mode untouched ── */
 @media (prefers-color-scheme: light) {
   [data-testid="stSidebar"] label,
@@ -323,39 +343,22 @@ def _render_answer_box(final: str):
 
 
 def _render_explanation(exp: str, final: str):
-    """Renders full step-by-step explanation with KaTeX in one iframe."""
+    """Render step-by-step explanation using simple st.markdown — reliable, no iframe height issues."""
     if not exp:
         return
     lines = exp.split("\n")
-    blocks = []
-    cur_hdr, cur_body = None, []
-
-    def flush():
-        nonlocal cur_hdr, cur_body
-        if cur_body:
-            hdr = f'<div class="step-hdr">{_html_lib.escape(cur_hdr)}</div>' if cur_hdr else ""
-            blocks.append(f'<div style="padding:4px 0;border-bottom:1px solid rgba(148,163,184,.15)">{hdr}{_html_lib.escape(" ".join(cur_body))}</div>')
-        cur_hdr, cur_body = None, []
-
     for ln in lines:
-        s = ln.strip()
-        if not s: continue
-        if s.startswith("FINAL ANSWER:"):
-            flush(); blocks.append(f'<div class="fin">🎯 {_html_lib.escape(s)}</div>')
-        elif s.startswith("KEY CONCEPT:"):
-            flush(); blocks.append(f'<div class="key">💡 {_html_lib.escape(s)}</div>')
-        elif s.startswith("STEP"):
-            flush(); cur_hdr = s
+        ln = ln.strip()
+        if not ln:
+            continue
+        if ln.startswith("FINAL ANSWER:"):
+            st.markdown(f'<div class="final-line">🎯 {ln}</div>', unsafe_allow_html=True)
+        elif ln.startswith("KEY CONCEPT:"):
+            st.markdown(f'<div class="key-line">💡 {ln}</div>', unsafe_allow_html=True)
+        elif ln.startswith("STEP"):
+            st.markdown(f'<div class="step-line"><b>{ln}</b></div>', unsafe_allow_html=True)
         else:
-            cur_body.append(s)
-    flush()
-
-    body = "\n".join(blocks)
-    h = min(1400, max(180, len([l for l in lines if l.strip()]) * 40))
-    components.html(
-        _katex_page(body, bg="transparent", border="none", pad="0"),
-        height=h + 20, scrolling=True
-    )
+            st.markdown(f'<div class="step-line">{ln}</div>', unsafe_allow_html=True)
 
 
 # 2. SIDEBAR
