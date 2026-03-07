@@ -327,38 +327,111 @@ def _render_math_preview(text: str, label: str = "Rendered Preview", height: int
 
 
 def _render_answer_box(final: str):
-    """Renders the final answer box with KaTeX math."""
+    """Renders the final answer box with KaTeX math. Forces readable text in both modes."""
     if not final:
         return
     wrapped = _auto_wrap_latex(final.strip())
     safe = _html_lib.escape(wrapped)
-    body = f'<div class="lbl">🎯 Final Answer</div><div>{safe}</div>'
-    h = min(200, 50 + max(1, final.count("\n") + 1) * 36)
+    body = f'<div class="lbl">🎯 Final Answer</div><div class="ans">{safe}</div>'
+    h = min(200, 60 + max(1, final.count("\n") + 1) * 36)
+    # extra CSS forces dark text on light bg and light text on dark bg
+    extra = (
+        "border-left:4px solid #16A34A;"
+        ".ans{font-size:16px;font-weight:600}"
+        "@media(prefers-color-scheme:light){body,div{color:#111827!important}}"
+        "@media(prefers-color-scheme:dark){body,div{color:#f0fdf4!important}}"
+    )
     components.html(
         _katex_page(body, bg="rgba(22,163,74,.09)",
                     border="1px solid rgba(22,163,74,.35)",
-                    extra="border-left:4px solid #16A34A"),
+                    extra=extra),
         height=h + 28, scrolling=False
     )
 
 
 def _render_explanation(exp: str, final: str):
-    """Render step-by-step explanation using simple st.markdown — reliable, no iframe height issues."""
+    """
+    Renders step-by-step explanation.
+    Lines with $...$ math go through a KaTeX iframe.
+    Plain text lines use st.markdown (fast, no iframe overhead).
+    """
     if not exp:
         return
+
+    import re as _re
+
+    def _has_math(text: str) -> bool:
+        return bool(_re.search(r'\$|\\[a-zA-Z]', text))
+
+    def _line_iframe(text: str, css_class: str, prefix: str = "", bold: bool = False):
+        """Render one line via KaTeX iframe — used when line contains math."""
+        safe = _html_lib.escape(text)
+        weight = "font-weight:700;" if bold else ""
+        body = (
+            f'<div style="padding:5px 0;border-bottom:1px solid rgba(148,163,184,.2);'
+            f'{weight}line-height:1.75">{prefix}{safe}</div>'
+        )
+        extra = (
+            "@media(prefers-color-scheme:light){body,div{color:#111827!important}}"
+            "@media(prefers-color-scheme:dark){body,div{color:#e8eaf0!important}}"
+        )
+        # Estimate height: ~32px base + ~18px per wrapped line (~80 chars each)
+        wrapped_lines = max(1, len(text) // 80 + 1)
+        h = 32 + wrapped_lines * 22
+        components.html(
+            _katex_page(body, bg="transparent", border="none", pad="5px 0", extra=extra),
+            height=h, scrolling=False
+        )
+
     lines = exp.split("\n")
     for ln in lines:
         ln = ln.strip()
         if not ln:
             continue
+
         if ln.startswith("FINAL ANSWER:"):
-            st.markdown(f'<div class="final-line">🎯 {ln}</div>', unsafe_allow_html=True)
+            if _has_math(ln):
+                safe = _html_lib.escape(ln)
+                body = f'<div class="fin">🎯 {safe}</div>'
+                extra = (
+                    "@media(prefers-color-scheme:light){body,.fin{color:#111827!important}}"
+                    "@media(prefers-color-scheme:dark){body,.fin{color:#f0fdf4!important}}"
+                )
+                h = max(60, 32 + (len(ln) // 80 + 1) * 22)
+                components.html(
+                    _katex_page(body, bg="transparent", border="none", pad="0", extra=extra),
+                    height=h, scrolling=False
+                )
+            else:
+                st.markdown(f'<div class="final-line">🎯 {ln}</div>', unsafe_allow_html=True)
+
         elif ln.startswith("KEY CONCEPT:"):
-            st.markdown(f'<div class="key-line">💡 {ln}</div>', unsafe_allow_html=True)
+            if _has_math(ln):
+                safe = _html_lib.escape(ln)
+                body = f'<div class="key">💡 {safe}</div>'
+                extra = (
+                    "@media(prefers-color-scheme:light){body,.key{color:#111827!important}}"
+                    "@media(prefers-color-scheme:dark){body,.key{color:#e8eaf0!important}}"
+                )
+                h = max(60, 32 + (len(ln) // 80 + 1) * 22)
+                components.html(
+                    _katex_page(body, bg="transparent", border="none", pad="0", extra=extra),
+                    height=h, scrolling=False
+                )
+            else:
+                st.markdown(f'<div class="key-line">💡 {ln}</div>', unsafe_allow_html=True)
+
         elif ln.startswith("STEP"):
-            st.markdown(f'<div class="step-line"><b>{ln}</b></div>', unsafe_allow_html=True)
+            if _has_math(ln):
+                _line_iframe(ln, "step-line", bold=True)
+            else:
+                st.markdown(f'<div class="step-line"><b>{ln}</b></div>', unsafe_allow_html=True)
+
         else:
-            st.markdown(f'<div class="step-line">{ln}</div>', unsafe_allow_html=True)
+            if _has_math(ln):
+                _line_iframe(ln, "step-line")
+            else:
+                st.markdown(f'<div class="step-line">{ln}</div>', unsafe_allow_html=True)
 
 
 # 2. SIDEBAR

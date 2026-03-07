@@ -36,7 +36,9 @@ Other rules:
 - Use plain English between steps. Avoid jargon without explanation.
 - Every formula you use must be named (e.g., "using the quadratic formula", "by the chain rule")
 - A student who just learned this topic should fully understand each step.
-- Keep it concise but complete. Do not skip any steps."""
+- Keep it concise but complete. Do not skip any steps.
+- NEVER use \\boxed{} anywhere — write the answer plainly e.g. "x = 4 and x = -1/2"
+- The FINAL ANSWER line must be a clean readable statement, not wrapped in any box or special notation."""
 
 
 def explainer_node(state: MathMentorState) -> MathMentorState:
